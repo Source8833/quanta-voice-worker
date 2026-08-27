@@ -26,7 +26,10 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # Hardcoded lowercase: `github.repository` is `Source8833/quanta-voice-worker`,
+  # and a Docker repository name must be lowercase - buildx rejects the tag
+  # outright, which is at least a loud failure rather than a silent one.
+  IMAGE_NAME: source8833/quanta-voice-worker
 
 jobs:
   build:
