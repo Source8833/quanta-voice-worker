@@ -8,10 +8,12 @@ Quanta's voice in the Suite (quanta_tools/voice_engine.py), described there as
 the same model files and the same default onto RunPod so the hosted app can
 speak in Quanta's own voice instead of the browser's robot.
 
-WHY CPU AND NOT A GPU
-Kokoro is 82M parameters and `kokoro-onnx` is built for CPU. A 24 GB card
-would cost about five times as much per hour and sit idle. On serverless CPU
-this runs at roughly $0.14/hr while actually speaking and $0 at rest.
+WHY GPU, THOUGH IT IS ONLY 82M PARAMETERS
+Because measurement disagreed with the obvious answer. On 2 vCPU this ran at
+13.1x realtime — 42.6s of compute for 3.24s of speech — and cost MORE per
+sentence than a GPU, since you pay for time and the GPU finishes almost at
+once. $0.00036 per second of speech on CPU against $0.0000096 on AMPERE_24.
+See the Dockerfile for the full numbers.
 
 WHAT THIS RETURNS
 A base64 WAV, 24 kHz, PCM 16-bit — the same format the Suite writes to disk.
