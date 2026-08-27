@@ -81,6 +81,32 @@ KOKORO, PROVIDERS = _build()
 ON_GPU = any("CUDA" in p for p in PROVIDERS)
 
 
+def _warm():
+    """
+    Pay the CUDA kernel JIT during BOOT, not on somebody's first sentence.
+
+    Measured on Blackwell: the first synthesis took 51 SECONDS while
+    onnxruntime compiled kernels for the card, and every one after it took
+    268 ms. With workersMin 0 that cost lands on a real user every time a
+    worker starts cold - and the browser's fallback voice wins the race long
+    before it arrives, so the first thing anyone ever hears from Quanta would
+    never actually be Quanta.
+
+    This runs at import, while the worker is still INITIALIZING and RunPod is
+    not yet dispatching jobs to it. It is deliberately forgiving: a warmup that
+    fails must not take the worker down with it, because a slow first sentence
+    is a far better outcome than no voice at all.
+    """
+    try:
+        KOKORO.create(text="Warming.", voice=DEFAULT_VOICE, speed=1.0, lang="en-us")
+        print(f"[quanta-voice] warm, gpu={ON_GPU}", flush=True)
+    except Exception as exc:
+        print(f"[quanta-voice] warmup skipped: {exc}", flush=True)
+
+
+_warm()
+
+
 def _clamp(value, low, high, fallback):
     try:
         return max(low, min(high, float(value)))

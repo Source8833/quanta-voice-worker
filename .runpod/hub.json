@@ -5,8 +5,8 @@
   "category": "audio",
   "iconUrl": "",
   "config": {
-    "runsOn": "CPU",
-    "containerDiskInGb": 15,
+    "runsOn": "GPU",
+    "containerDiskInGb": 25,
     "presets": [],
     "env": [
       {
