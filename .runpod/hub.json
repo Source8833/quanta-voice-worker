@@ -1,0 +1,32 @@
+{
+  "title": "Quanta Voice",
+  "description": "Quanta Voice — Kokoro-82M text to speech, 24kHz WAV. QuantaCore Labs.",
+  "type": "serverless",
+  "category": "audio",
+  "iconUrl": "",
+  "config": {
+    "runsOn": "CPU",
+    "containerDiskInGb": 15,
+    "presets": [],
+    "env": [
+      {
+        "key": "QUANTA_VOICE",
+        "input": {
+          "name": "Default voice",
+          "type": "string",
+          "description": "Kokoro voice used when a request does not name one.",
+          "default": "af_heart"
+        }
+      },
+      {
+        "key": "QUANTA_TTS_MAX_CHARS",
+        "input": {
+          "name": "Max characters",
+          "type": "string",
+          "description": "Backstop cap on synthesis length.",
+          "default": "1200"
+        }
+      }
+    ]
+  }
+}

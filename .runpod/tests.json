@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "speaks_default_voice",
+      "input": { "text": "Love for the world. Creating the future." },
+      "timeout": 60000
+    }
+  ],
+  "config": { "gpuTypeId": "NVIDIA GeForce RTX 4090", "gpuCount": 0 }
+}
