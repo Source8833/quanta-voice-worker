@@ -23,7 +23,10 @@
 # because the work finishes almost immediately. Cheap-per-hour lost to
 # cheap-per-job.
 # ---------------------------------------------------------------------
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+# CUDA 12.8, not 12.4: the US pool that actually has stock is Blackwell
+# (RTX PRO 6000 MIG), and Blackwell needs 12.8+. The worker's own fitness
+# check reports the host driver as CUDA 13.0, which runs a 12.8 runtime fine.
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1
@@ -42,7 +45,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+
+# `kokoro-onnx` pulls in `onnxruntime` (CPU) as a dependency. It and
+# `onnxruntime-gpu` install the SAME `onnxruntime` module, so the CPU wheel
+# silently overwrites the GPU one and the CUDA provider vanishes entirely -
+# not disabled, ABSENT from get_available_providers(). Evict it and reinstall
+# the GPU build last so it is the copy left on disk.
+RUN pip3 install --no-cache-dir -r requirements.txt  && pip3 uninstall -y onnxruntime  && pip3 install --no-cache-dir --force-reinstall "onnxruntime-gpu>=1.22.0"
+
+# FAIL THE BUILD, not a user's request. Without this the image ships happily,
+# runs on a GPU worker, quietly uses the CPU, and the only tell is a field in
+# the response that somebody has to think to read.
+RUN python3 -c "import importlib.metadata as md, sys, onnxruntime as ort; names={d.metadata['Name'].lower() for d in md.distributions()}; print('installed:', sorted(n for n in names if 'onnxruntime' in n)); print('providers:', ort.get_available_providers()); sys.exit('CPU onnxruntime is shadowing the GPU build') if 'onnxruntime' in names else None; sys.exit('onnxruntime-gpu missing') if 'onnxruntime-gpu' not in names else None; sys.exit('no CUDAExecutionProvider compiled in') if 'CUDAExecutionProvider' not in ort.get_available_providers() else None"
 
 # The weights are BAKED IN rather than pulled at boot or mounted from a network
 # volume. They are only ~336 MB, and baking them means: no volume to pay for

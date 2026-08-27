@@ -1,8 +1,17 @@
 runpod>=1.6.0
 kokoro-onnx>=0.4.0
-# onnxruntime-GPU. The CPU build measured 13.1x realtime on 2 vCPU — 42s of
-# compute for 3s of speech — and cost MORE per sentence than a GPU, because
-# you pay for time and the GPU finishes almost immediately. See the Dockerfile.
-onnxruntime-gpu>=1.17.0
+# onnxruntime-GPU. The CPU build measured 13.1x realtime on 2 vCPU - 42s of
+# compute for 3s of speech - and cost MORE per sentence than a GPU, because
+# you pay for time and the GPU finishes almost immediately.
+#
+# LISTING IT HERE IS NOT ENOUGH, AND THAT COST A DEPLOY TO LEARN.
+# `kokoro-onnx` depends on `onnxruntime` - the CPU package. pip happily
+# installs both; they ship the SAME `onnxruntime` module, so whichever lands
+# last wins, and it was the CPU one. The worker booted on a healthy GPU and
+# reported:
+#     providers available=['AzureExecutionProvider', 'CPUExecutionProvider']
+# CUDAExecutionProvider was not merely inactive - it was not even present.
+# The Dockerfile therefore evicts the CPU package explicitly after install.
+onnxruntime-gpu>=1.22.0
 soundfile>=0.12.1
 numpy>=1.24
