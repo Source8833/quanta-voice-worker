@@ -1,5 +1,8 @@
 runpod>=1.6.0
 kokoro-onnx>=0.4.0
-onnxruntime>=1.17.0
+# onnxruntime-GPU. The CPU build measured 13.1x realtime on 2 vCPU — 42s of
+# compute for 3s of speech — and cost MORE per sentence than a GPU, because
+# you pay for time and the GPU finishes almost immediately. See the Dockerfile.
+onnxruntime-gpu>=1.17.0
 soundfile>=0.12.1
 numpy>=1.24

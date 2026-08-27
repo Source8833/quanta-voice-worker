@@ -22,6 +22,7 @@ import base64
 import io
 import os
 
+import onnxruntime as ort
 import runpod
 import soundfile as sf
 from kokoro_onnx import Kokoro
@@ -45,10 +46,37 @@ VOICES = {
     "bf_emma", "bf_isabella", "bm_george", "bm_lewis",
 }
 
-# Loaded at import, on purpose: this runs during worker boot, so the model is
+def _build():
+    """
+    Build the ONNX session with the GPU provider EXPLICITLY, and report which
+    one actually took.
+
+    Left to itself, onnxruntime silently falls back to CPU when the CUDA
+    provider cannot load — a missing library, a driver mismatch — and the only
+    symptom is that synthesis is thirteen times slower. That is exactly the
+    failure this worker was rebuilt to escape, and it would look identical to
+    success. So the provider is named, and then named again in every response,
+    so a fallback is visible instead of merely slow.
+    """
+    available = ort.get_available_providers()
+    wanted = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in available]
+
+    session = ort.InferenceSession(MODEL_PATH, providers=wanted)
+    active = session.get_providers()
+    print(f"[quanta-voice] providers available={available} active={active}", flush=True)
+
+    # kokoro-onnx exposes from_session on newer versions; fall back to the
+    # path constructor, which then picks its own providers.
+    if hasattr(Kokoro, "from_session"):
+        return Kokoro.from_session(session, VOICES_PATH), active
+    return Kokoro(MODEL_PATH, VOICES_PATH), active
+
+
+# Built at import, on purpose: this runs during worker boot, so the model is
 # resident before the first job is dispatched rather than being paid for by
 # whoever happens to speak first.
-KOKORO = Kokoro(MODEL_PATH, VOICES_PATH)
+KOKORO, PROVIDERS = _build()
+ON_GPU = any("CUDA" in p for p in PROVIDERS)
 
 
 def _clamp(value, low, high, fallback):
@@ -86,6 +114,11 @@ def handler(job):
         "sample_rate": sample_rate,
         "voice": voice,
         "characters": len(text),
+        # Reported so a silent fall back to CPU is VISIBLE rather than merely
+        # slow. A CPU fallback runs ~13x realtime, which looks like success
+        # and feels like a broken feature.
+        "providers": PROVIDERS,
+        "gpu": ON_GPU,
     }
 
 
