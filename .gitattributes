@@ -1,0 +1,8 @@
+# This repo is cloned and built on Linux. CRLF in a Dockerfile or a shell
+# heredoc breaks in ways that look like a broken image rather than a line
+# ending, so pin everything that the build touches to LF.
+* text=auto eol=lf
+Dockerfile text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
