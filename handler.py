@@ -29,10 +29,16 @@ import runpod
 import soundfile as sf
 from kokoro_onnx import Kokoro
 
+from quanta_voice import QuantaVoice, TONES
+
 MODEL_PATH = os.environ.get("KOKORO_MODEL", "/models/kokoro-v1.0.onnx")
 VOICES_PATH = os.environ.get("KOKORO_VOICES", "/models/voices-v1.0.bin")
 
 DEFAULT_VOICE = os.environ.get("QUANTA_VOICE", "af_heart")
+
+# ⭐ QUANTA'S OWN VOICE (2026-09-13): the tuned blend with its cadence and
+# tone, the same voice Quanta OS speaks. Asked for as voice "quanta"; see
+# quanta_voice.py. Named Kokoro voices still work exactly as before.
 
 # The gateway already truncates at a sentence boundary; this is the backstop
 # for anything reaching the endpoint directly. Synthesis time scales with
@@ -43,6 +49,7 @@ MAX_CHARS = int(os.environ.get("QUANTA_TTS_MAX_CHARS", "1200"))
 # falls back to Quanta's own rather than erroring — a wrong voice is a far
 # better failure than silence.
 VOICES = {
+    "quanta",
     "af_heart", "af_bella", "af_sarah", "af_sky",
     "am_adam", "am_michael", "am_onyx", "am_puck",
     "bf_emma", "bf_isabella", "bm_george", "bm_lewis",
@@ -79,6 +86,7 @@ def _build():
 # whoever happens to speak first.
 KOKORO, PROVIDERS = _build()
 ON_GPU = any("CUDA" in p for p in PROVIDERS)
+QUANTA = QuantaVoice(KOKORO)
 
 
 def _warm():
@@ -99,6 +107,7 @@ def _warm():
     """
     try:
         KOKORO.create(text="Warming.", voice=DEFAULT_VOICE, speed=1.0, lang="en-us")
+        QUANTA.speak("Warming, gently.", "steady")
         print(f"[quanta-voice] warm, gpu={ON_GPU}", flush=True)
     except Exception as exc:
         print(f"[quanta-voice] warmup skipped: {exc}", flush=True)
@@ -127,10 +136,14 @@ def handler(job):
         voice = DEFAULT_VOICE
 
     speed = _clamp(payload.get("speed", 1.0), 0.5, 2.0, 1.0)
+    tone = payload.get("tone") if payload.get("tone") in TONES else "steady"
 
-    samples, sample_rate = KOKORO.create(
-        text=text, voice=voice, speed=speed, lang="en-us"
-    )
+    if voice == "quanta":
+        samples, sample_rate = QUANTA.speak(text, tone, speed), 24000
+    else:
+        samples, sample_rate = KOKORO.create(
+            text=text, voice=voice, speed=speed, lang="en-us"
+        )
 
     buffer = io.BytesIO()
     sf.write(buffer, samples, sample_rate, format="WAV", subtype="PCM_16")
@@ -141,6 +154,7 @@ def handler(job):
         "format": "wav",
         "sample_rate": sample_rate,
         "voice": voice,
+        "tone": tone if voice == "quanta" else None,
         "characters": len(text),
         # Reported so a silent fall back to CPU is VISIBLE rather than merely
         # slow. A CPU fallback runs ~13x realtime, which looks like success

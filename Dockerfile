@@ -77,7 +77,7 @@ m=os.path.getsize('/models/kokoro-v1.0.onnx'); v=os.path.getsize('/models/voices
 print(f'kokoro-v1.0.onnx {m} bytes, voices-v1.0.bin {v} bytes'); \
 sys.exit('model file looks wrong' if m < 200_000_000 or v < 10_000_000 else 0)"
 
-COPY handler.py .
+COPY quanta_voice.py handler.py ./
 
 ENV KOKORO_MODEL=/models/kokoro-v1.0.onnx \
     KOKORO_VOICES=/models/voices-v1.0.bin \
